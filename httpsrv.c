@@ -20,13 +20,13 @@ typedef struct {
 } header;
 
 typedef struct {
-    const char method[10];
-    const char* path;
+    char method[10];
+    char* path;
     header* headers;
     uint16_t header_count;
     cookie *cookies;
     uint16_t cookie_count;
-    const char *body;
+    char *body;
 } http_request;
 
 void crtcHandler(int socket_fd) {
@@ -36,14 +36,33 @@ void crtcHandler(int socket_fd) {
     exit(0);
 }
 
+int parse(char* buffer, http_request* req) {
+    // parse body
+    printf("%s", buffer);
+    char* payload = strstr(buffer, "\r\n\r\n");
+    if (payload != NULL) {
+        payload += 4;
+        printf("notnull");
+    }
+    printf("payload: %s\n", payload);
+    req->body = strdup(payload);
+    // parse method
+    char* method = strtok(buffer, " ");
+    strcpy(req->method, method);
+    // parse path
+    char* path = strtok(NULL, " ");
+    req->path = strdup(path);
+}
+
+
 int main() {
+    signal(SIGINT, crtcHandler);
+
     // initialize some variables
     int socket_fd, new_socket, valread;
     char buffer[BUFFSIZE] = {0};
-    char* hello = "HTTP/1.1 200 OK\r\n\r\nHello World!\r\n";
-
-    signal(SIGINT, crtcHandler);
-
+    // char* hello = "HTTP/1.1 200 OK\r\n\r\nHello World!\r\n";
+    char* hello = "HTTP/1.1 200 OK\r\n\r\n<h1>Hello<h1>\r\n";
 
     // create socket address struct
     struct sockaddr_in address;
@@ -93,22 +112,12 @@ int main() {
         valread = read(new_socket, buffer, BUFFSIZE);
         printf("==> BUFFER <==\n%s\n==============\n", buffer);
 
-        // parse method
-        char strtok_save[BUFFSIZE];
-        char *method = strtok(buffer, " ");
-        strcpy(req.method, method);
-        // parse path
-        req.path = strtok(NULL, " ");
-        printf("%s\n", req.path);
-        // parse body
-        char *payload = strstr(buffer, "\r\n\r\n");
-        if (payload != NULL) {
-            payload += 4;
-        }
+        parse(buffer, &req);
 
-        printf("%s\n", req.method);
-        printf("%s\n", req.path);
-        printf("%s\n", req.body);
+
+        printf("Method: %s\n", req.method);
+        printf("Path: %s\n", req.path);
+        printf("Body: %s\n", req.body);
 
 
         /**
@@ -132,6 +141,8 @@ int main() {
         send(new_socket, hello, strlen(hello), 0);
         printf("Hello message sent\n");
 
+        free(req.path);
+        free(req.body);
         // closing the connected socket
         close(new_socket);
         // empty buffer

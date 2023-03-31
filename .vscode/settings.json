@@ -3,7 +3,8 @@
         "socket.h": "c",
         "unistd.h": "c",
         "_iovec_t.h": "c",
-        "osbyteorder.h": "c"
+        "osbyteorder.h": "c",
+        "api_server.h": "c"
     },
     "cmake.configureOnOpen": false
 }
