@@ -5,29 +5,36 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #define PORT 8080
-//#define BUFFSIZE 4194304
+// #define BUFFSIZE 4194304
 #define BUFFSIZE 65535
 
 
 typedef struct {
   const char *name;
   const char *value;
-} cookie;
+} cookie_t;
 
 typedef struct {
   const char *key;
   const char *value;
-} header;
+} header_t;
+
+typedef struct {
+  const char *key;
+  const char *value;
+} param_t;
 
 typedef struct {
     char method[10];
     char* path;
-    header* headers;
+    header_t* headers;
     uint16_t header_count;
-    cookie *cookies;
+    cookie_t *cookies;
     uint16_t cookie_count;
+    param_t* params;
+    uint16_t params_count;
     char *body;
-} http_request;
+} http_request_t;
 
 void crtcHandler(int socket_fd) {
     printf("\nShutting down...\n");
@@ -36,22 +43,44 @@ void crtcHandler(int socket_fd) {
     exit(0);
 }
 
-int parse(char* buffer, http_request* req) {
-    // parse body
-    printf("%s", buffer);
+int parse(char* buffer, http_request_t* req) {
     char* payload = strstr(buffer, "\r\n\r\n");
     if (payload != NULL) {
         payload += 4;
-        printf("notnull");
+        printf("notnull\n");
     }
+    // separate body from buffer
     printf("payload: %s\n", payload);
     req->body = strdup(payload);
-    // parse method
-    char* method = strtok(buffer, " ");
-    strcpy(req->method, method);
-    // parse path
-    char* path = strtok(NULL, " ");
-    req->path = strdup(path);
+    if (req->body == NULL) {
+        printf("failed to allocate memory for body\n");
+    }
+
+    // separate header from buffer
+    char *start = &buffer[0];
+    char *end = payload;
+    char *header = (char *)calloc(1, end - start + 1);
+    if (header == NULL) {
+        printf("failed to allocate memory for header\n");
+    }
+    memcpy(header, start, end - start);
+    printf("header: \n%s\n", header);
+
+
+    free(header);
+
+
+    // // parse method
+    // char* method = strtok(buffer, " ");
+    // strcpy(req->method, method);
+    // // parse path
+    // char* path = strtok(NULL, " ");
+    // req->path = strdup(path);
+    // if (req->path == NULL) {
+    //     printf("failed to allocate memory for path\n");
+    // }
+
+    return 0;
 }
 
 
@@ -62,7 +91,7 @@ int main() {
     int socket_fd, new_socket, valread;
     char buffer[BUFFSIZE] = {0};
     // char* hello = "HTTP/1.1 200 OK\r\n\r\nHello World!\r\n";
-    char* hello = "HTTP/1.1 200 OK\r\n\r\n<h1>Hello<h1>\r\n";
+    char* hello = "HTTP/1.0 200 OK\r\n\r\n<h1>Hello<h1>\r\n";
 
     // create socket address struct
     struct sockaddr_in address;
@@ -95,29 +124,25 @@ int main() {
 
     // accept incoming connections
     for (;;) {
+        printf("Accepting connection\n");
         // accept incoming connection
         if ((new_socket = accept(socket_fd, (struct sockaddr*)&address, (socklen_t*)&addrlen)) < 0) {
             perror("accept");
             exit(EXIT_FAILURE);
         }
-
-        http_request req = {
-            .headers = NULL,
-            .header_count = 0,
-            .cookies = NULL,
-            .cookie_count = 0,
-        };
-
+        printf("Found connection\n");
         // read message from socket
         valread = read(new_socket, buffer, BUFFSIZE);
         printf("==> BUFFER <==\n%s\n==============\n", buffer);
 
-        parse(buffer, &req);
+        http_request_t *req = malloc(sizeof(http_request_t));
+
+        parse(buffer, req);
 
 
-        printf("Method: %s\n", req.method);
-        printf("Path: %s\n", req.path);
-        printf("Body: %s\n", req.body);
+        printf("Method: %s\n", req->method);
+        printf("Path: %s\n", req->path);
+        printf("Body: %s\n", req->body);
 
 
         /**
@@ -132,21 +157,23 @@ int main() {
                 strcpy(body[i], token);
             }
         }
-        if (strcmp(body[7], "shutdown") == 0) {
-            close(new_socket);
-            break;
-        }
         **/
 
         send(new_socket, hello, strlen(hello), 0);
         printf("Hello message sent\n");
 
-        free(req.path);
-        free(req.body);
+        printf("%s", req->body);
+
+        free(req->path);
+        free(req->body);
+        free(req);
+
+
         // closing the connected socket
         close(new_socket);
         // empty buffer
-        strcpy(&buffer[0], "\0");
+        memset(buffer, '\0', strlen(buffer));
+        printf("%s\n", buffer);
     }
     return 0;
 }

@@ -4,7 +4,8 @@
         "unistd.h": "c",
         "_iovec_t.h": "c",
         "osbyteorder.h": "c",
-        "api_server.h": "c"
+        "api_server.h": "c",
+        "__config": "c"
     },
     "cmake.configureOnOpen": false
 }
