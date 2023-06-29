@@ -82,8 +82,9 @@ int parse(char* buffer, http_request_t* req) {
         char* saveptr_2;
         // using strdup so the strings will still live after we free "tmp"
         header_t header = {
-            .key = strdup(strtok_r(tmp, ": ", &saveptr_2)),
-            .value = strdup(strtok_r(NULL, ": ", &saveptr_2))
+            .key = strdup(strtok_r(tmp, ":", &saveptr_2)),
+            // + 1 to remove leading space
+            .value = strdup(strtok_r(NULL, ":", &saveptr_2) + 1)
         };
         free(tmp);
 
